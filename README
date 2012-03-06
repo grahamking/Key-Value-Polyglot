@@ -1,0 +1,30 @@
+An in-memory key-value store, in Go, Python and C.
+
+Just for fun, and practice.
+
+- Go version:
+ You need gorun to run it as a script. (https://wiki.ubuntu.com/gorun)
+ Uses Go release-branch r60.
+
+- Python version:
+ Uses Python 2.7, just run the script.
+
+- C version:
+ Build with: gcc -std=gnu99 -g -W -Wall -pedantic -o memg memg.c
+
+The key-value stores emulates 'set' and 'get' from the memcached protocol, so you can test them with a memcached client. Script test.py is included, which uses pylibmc.
+
+To test from telnet:
+
+    telnet 127.0.0.1 11211
+    set key 0 0 3
+    val
+    get key
+
+In the 'set' line, the '3' is the length of the value in bytes. The two zero's are ignored.
+
+The C version was the hardest to write, because my C was rusty, and I had to implement buffering over the socket 'recv' myself.
+
+The Python version took a while to get right. The 'default' python socket interface is a thin layer over the C calls. Once I realized I could treat the socket as a file ('makefile') things got easier.
+
+The Go version was the easiest to write, and runs the fastest. Go is built for this stuff.
