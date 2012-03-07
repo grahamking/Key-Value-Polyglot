@@ -8,6 +8,9 @@ import (
     "strings"
     "os"
     "strconv"
+
+    // Uncomment to profile
+    "runtime/pprof"
 )
 
 const (
@@ -16,6 +19,11 @@ const (
 
 func main() {
 
+    // Uncomment these three lines to profile
+    handle, _ := os.Create("memg.prof")
+    pprof.StartCPUProfile(handle)
+    defer pprof.StopCPUProfile()
+
     listener, err := net.Listen("tcp", "127.0.0.1:" + PORT)
     if err != nil {
         panic("Error listening on " + PORT + ": " + err.String())
@@ -23,13 +31,34 @@ func main() {
 
     cache := NewCache()
 
-    netconn, err := listener.Accept()
-    if err != nil {
-        panic("Listener accept error: " + err.String())
-        return
+    if isSingle() {
+        netconn, err := listener.Accept()
+        if err != nil {
+            panic("Accept error: " + err.String())
+        }
+
+        handleConn(netconn, cache)
+
+    } else {
+        for {
+            netconn, err := listener.Accept()
+            if err != nil {
+                panic("Accept error: " + err.String())
+            }
+
+            go handleConn(netconn, cache)
+        }
     }
 
-    handleConn(netconn, cache)
+}
+
+func isSingle() bool {
+    for _, arg := range(os.Args) {
+        if arg == "--single" {
+            return true
+        }
+    }
+    return false
 }
 
 /*

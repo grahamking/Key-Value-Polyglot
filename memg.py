@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import socket
 import threading
+import sys
 
 CACHE = {}
 
@@ -11,12 +12,14 @@ def main():
     sock.bind(("127.0.0.1", 11211))
     sock.listen(1)
 
-    conn, addr = sock.accept()
-
-    handle_con(conn)
-    #thread = threading.Thread(target=handle_con, args=(conn,))
-    #thread.start()
-    #thread.join()
+    if '--single' in sys.argv:
+        conn, _ = sock.accept()
+        handle_con(conn)
+    else:
+        while 1:
+            conn, _ = sock.accept()
+            thread = threading.Thread(target=handle_con, args=(conn,))
+            thread.start()
 
 
 def handle_con(conn):
