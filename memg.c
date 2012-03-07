@@ -1,4 +1,6 @@
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -69,10 +71,9 @@ char *buf_bytes(struct Buf *buf, int num) {
     return line;
 }
 
-void handle_conn(int conn) {
+void handle_conn(int conn, struct hsearch_data *htab) {
 
     char *cmd, *key, *val, *msg, *line;
-    ssize_t len;
     int length;
     ENTRY entry, *result;
     struct Buf *buf;
@@ -94,7 +95,7 @@ void handle_conn(int conn) {
             key = strtok(NULL, " ");
 
             entry.key = key;
-            result = hsearch(entry, FIND);
+            hsearch_r(entry, FIND, &result, htab);
             if (result != NULL) {
 
                 val = (char *) result->data;
@@ -117,25 +118,31 @@ void handle_conn(int conn) {
             //flags = strtok(NULL, " ");
 
             length = atoi(strtok(NULL, " "));
-
             val = buf_bytes(buf, length);
-            /*
-            if (len == -1) {
-                printf("Receive value error: %d\n", errno);
-                break;
-            }
-            */
 
             entry.key = strdup(key);
             entry.data = strdup(val);
-            hsearch(entry, ENTER);
+            hsearch_r(entry, ENTER, &result, htab);
 
             send(conn, "STORED\r\n", 8, 0);
         }
     }
 }
 
-int main() {
+// Is --single in argv?
+int is_single(int argc, char *argv[]) {
+
+    int i;
+
+    for (i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "--single") == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
 
     int sock_fd;
     int err;
@@ -143,9 +150,12 @@ int main() {
     int conn;
     struct sockaddr_in *addr, *client_addr;
     socklen_t client_addr_size;
+    struct hsearch_data *htab;
 
     // Create hashmap storage
-    if (hcreate(10000) == -1) {
+    htab = malloc(sizeof(struct hsearch_data));
+    memset(htab, '0', sizeof(struct hsearch_data));
+    if (hcreate_r(10000, htab) == -1) {
         printf("Error on hcreate\n");
     }
 
@@ -178,13 +188,28 @@ int main() {
         printf("listen error: %d\n", errno);
     }
 
-    client_addr = malloc(sizeof(struct sockaddr_in));
-    client_addr_size = sizeof(struct sockaddr);
-    conn = accept(sock_fd, (struct sockaddr *)client_addr, &client_addr_size);
+    if (is_single(argc, argv)) {
 
-    handle_conn(conn);
+        client_addr = malloc(sizeof(struct sockaddr_in));
+        client_addr_size = sizeof(struct sockaddr);
+        conn = accept(sock_fd, (struct sockaddr *)client_addr, &client_addr_size);
 
-    close(conn);
+        handle_conn(conn, htab);
+        close(conn);
+
+    } else {
+        while (1) {
+
+            client_addr = malloc(sizeof(struct sockaddr_in));
+            client_addr_size = sizeof(struct sockaddr);
+            conn = accept(sock_fd, (struct sockaddr *)client_addr, &client_addr_size);
+
+            // In separate thread
+            handle_conn(conn, htab);
+            close(conn);
+        }
+    }
+
     close(sock_fd);
 
     return 0;

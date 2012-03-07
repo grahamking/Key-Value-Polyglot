@@ -50,7 +50,7 @@ The socket part was easy. Our languages are wrapping POSIX socket system calls. 
 The tricky part is managing the data you get from the socket. Sockets are just streams of data, it's up to the protocol to say when a message starts and ends. For the memcached protocol, we need to be able to read until \r\n, and also read a specific amount of bytes (which might include \r\n).
 Go makes that easy, with the bufio package. Python makes it easy too, once you figure out you can turn a socket into a file (via socket.makefile). In C of course, you're on your own.
 
-The C version took the longest to write, because my C was rusty, and I had to implement buffering around the socket 'recv' call.
+The C version took the longest to write, and is the least legible. Partly that is because my C was rusty, but the biggest part is because I had to implement buffering around the socket 'recv' call.
 
 The Python version took me a while to get right. I knew Python wouldn't make me write my own buffering code, and I spent too long playing with timeout and non-blocking setups. Once I realized I could treat the socket as a file ('makefile') things got easier.
 

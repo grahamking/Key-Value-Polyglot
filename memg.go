@@ -53,7 +53,7 @@ func main() {
 }
 
 func isSingle() bool {
-    for _, arg := range(os.Args) {
+    for _, arg := range os.Args  {
         if arg == "--single" {
             return true
         }
