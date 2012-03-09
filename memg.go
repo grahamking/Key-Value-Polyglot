@@ -8,28 +8,26 @@ import (
     "strings"
     "os"
     "strconv"
-
-    // Uncomment to profile
-    "runtime/pprof"
+    //"runtime/pprof"   // Uncomment to profile
 )
 
-const (
-    PORT = "11211"
-)
+var CACHE map[string] string;
 
 func main() {
 
     // Uncomment these three lines to profile
+    /*
     handle, _ := os.Create("memg.prof")
     pprof.StartCPUProfile(handle)
     defer pprof.StopCPUProfile()
+    */
 
-    listener, err := net.Listen("tcp", "127.0.0.1:" + PORT)
+    listener, err := net.Listen("tcp", "127.0.0.1:11211")
     if err != nil {
-        panic("Error listening on " + PORT + ": " + err.String())
+        panic("Error listening on 11211: " + err.String())
     }
 
-    cache := NewCache()
+    CACHE = make(map[string] string)
 
     if isSingle() {
         netconn, err := listener.Accept()
@@ -37,7 +35,7 @@ func main() {
             panic("Accept error: " + err.String())
         }
 
-        handleConn(netconn, cache)
+        handleConn(netconn)
 
     } else {
         for {
@@ -46,7 +44,7 @@ func main() {
                 panic("Accept error: " + err.String())
             }
 
-            go handleConn(netconn, cache)
+            go handleConn(netconn)
         }
     }
 
@@ -64,7 +62,7 @@ func isSingle() bool {
 /*
  * Networking
  */
-func handleConn(conn net.Conn, cache *Cache) {
+func handleConn(conn net.Conn) {
 
     reader := bufio.NewReader(conn)
     for {
@@ -89,11 +87,12 @@ func handleConn(conn net.Conn, cache *Cache) {
 
         case "get":
             key := parts[1]
-            val := cache.get(key)
-            length := strconv.Itoa(len(val))
-
-            conn.Write([]uint8("VALUE " + key + " 0 " + length + "\r\n"))
-            conn.Write([]uint8(val + "\r\n"))
+            val, ok := CACHE[key]
+            if ok {
+                length := strconv.Itoa(len(val))
+                conn.Write([]uint8("VALUE " + key + " 0 " + length + "\r\n"))
+                conn.Write([]uint8(val + "\r\n"))
+            }
             conn.Write([]uint8("END\r\n"))
 
         case "set":
@@ -102,31 +101,10 @@ func handleConn(conn net.Conn, cache *Cache) {
             //flags := parts[3]
             length, _ := strconv.Atoi(parts[4])
             // Really we should read exactly 'length' bytes + \r\n
-            val, _ := reader.ReadString('\n')
-            val = val[:length]    // Chop to length given by client
-            cache.set(key, val)
+            val := make([]byte, length);
+            reader.Read(val)
+            CACHE[key] = string(val);
             conn.Write([]uint8("STORED\r\n"))
         }
     }
-}
-
-/*
- * Cache
- */
-
-type Cache struct {
-    store map[string] string
-};
-
-func NewCache() *Cache {
-    store := make(map[string] string)
-    return &Cache{store: store}
-}
-
-func (self *Cache) set(key, val string) {
-    self.store[key] = val;
-}
-
-func (self *Cache) get(key string) string {
-    return self.store[key];
 }

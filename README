@@ -41,7 +41,7 @@ python test.py
  Uses Python 2.7 (2.6+ ?), just run the script.
 
 - C version:
- Build with: gcc -std=gnu99 -g -W -Wall -pedantic -o memg memg.c
+ Build with: gcc -std=gnu99 -g -W -Wall -pedantic -pthread -o memg memg.c
 
 ## Writing it
 

@@ -37,10 +37,13 @@ def handle_con(conn):
 
         if cmd == "get":
             key = parts[1]
-            val = CACHE[key]
 
-            conn.sendall("VALUE %s 0 %d\r\n" % (key, len(val)))
-            conn.sendall(val + "\r\n")
+            try:
+                val = CACHE[key]
+                conn.sendall("VALUE %s 0 %d\r\n" % (key, len(val)))
+                conn.sendall(val + "\r\n")
+            except KeyError:
+                pass
             conn.sendall("END\r\n")
 
         elif cmd == "set":

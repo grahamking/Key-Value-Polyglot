@@ -10,8 +10,19 @@
 #include <string.h>
 #include <unistd.h>
 #include <search.h>
+#include <pthread.h>
 
 #define READ_SIZE 1024
+
+// Arguments to our thread
+typedef struct {
+    int conn;
+    struct hsearch_data *htab;
+} thdata;
+
+/*
+ * Buffered IO on socket
+ */
 
 struct Buf {
     int conn;
@@ -71,7 +82,14 @@ char *buf_bytes(struct Buf *buf, int num) {
     return line;
 }
 
-void handle_conn(int conn, struct hsearch_data *htab) {
+/*
+ * Connection handling. Implements 'get' and 'set'.
+ */
+void *handle_conn(void *void_param) {//int conn, struct hsearch_data *htab) {
+
+    thdata *param = (thdata *)void_param;
+    int conn = param->conn;
+    struct hsearch_data *htab = param->htab;
 
     char *cmd, *key, *val, *msg, *line;
     int length;
@@ -82,7 +100,6 @@ void handle_conn(int conn, struct hsearch_data *htab) {
 
     while (1) {
         line = buf_line(buf);
-        //printf("Received: %s\n", line);
 
         if (strlen(line) == 0) {
             // Client has closed connection
@@ -127,6 +144,8 @@ void handle_conn(int conn, struct hsearch_data *htab) {
             send(conn, "STORED\r\n", 8, 0);
         }
     }
+
+    return NULL;
 }
 
 // Is --single in argv?
@@ -142,6 +161,9 @@ int is_single(int argc, char *argv[]) {
     return 0;
 }
 
+/*
+ * MAIN
+ */
 int main(int argc, char *argv[]) {
 
     int sock_fd;
@@ -151,10 +173,11 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in *addr, *client_addr;
     socklen_t client_addr_size;
     struct hsearch_data *htab;
+    pthread_t thread;
+    thdata *thread_data = malloc(sizeof(thdata));
 
     // Create hashmap storage
-    htab = malloc(sizeof(struct hsearch_data));
-    memset(htab, '0', sizeof(struct hsearch_data));
+    htab = calloc(1, sizeof(struct hsearch_data));
     if (hcreate_r(10000, htab) == -1) {
         printf("Error on hcreate\n");
     }
@@ -194,7 +217,9 @@ int main(int argc, char *argv[]) {
         client_addr_size = sizeof(struct sockaddr);
         conn = accept(sock_fd, (struct sockaddr *)client_addr, &client_addr_size);
 
-        handle_conn(conn, htab);
+        thread_data->conn = conn;
+        thread_data->htab = htab;
+        handle_conn(thread_data);
         close(conn);
 
     } else {
@@ -204,9 +229,13 @@ int main(int argc, char *argv[]) {
             client_addr_size = sizeof(struct sockaddr);
             conn = accept(sock_fd, (struct sockaddr *)client_addr, &client_addr_size);
 
-            // In separate thread
-            handle_conn(conn, htab);
-            close(conn);
+            thread_data->conn = conn;
+            thread_data->htab = htab;
+            pthread_create(
+                    &thread,
+                    NULL,
+                    handle_conn,
+                    thread_data);
         }
     }
 
