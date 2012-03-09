@@ -48,6 +48,7 @@ python test.py
 The socket part was easy. Our languages are wrapping POSIX socket system calls. C maps the calls exactly, and Python maps the C calls very closely. Go does a bit more work for us, replacing socket-bind-listen-accept with just listen-accept.
 
 The tricky part is managing the data you get from the socket. Sockets are just streams of data, it's up to the protocol to say when a message starts and ends. For the memcached protocol, we need to be able to read until \r\n, and also read a specific amount of bytes (which might include \r\n).
+
 Go makes that easy, with the bufio package. Python makes it easy too, once you figure out you can turn a socket into a file (via socket.makefile). In C of course, you're on your own.
 
 The C version took the longest to write, and is the least legible. Partly that is because my C was rusty, but the biggest part is because I had to implement buffering around the socket 'recv' call.
@@ -60,9 +61,9 @@ The Go version was the easiest to write because I had already used the bufio pac
 
 To time the different versions on your machine, edit test.py replacing 10 with 500 (at least), and run: time python test.py
 
-The C and Python versions perform similarly. The Python version is spending most of it's time in the 'recv' system call, and I presume so is the C version. That neutralizes the speed advantage C should have over Python.
+The C and Python versions perform similarly. The Python version is spending most of it's time in the 'recv' system call. The C version is spending all it's time shuffling memory around in my inefficient receive buffer. It may get much faster once I fix that.
 
-The Go version is many times faster than the C and Python version. I'm not sure why. I suspect it is something to do with 'pollServer' in net/fd.go, which might be filling buffers in the background. Or it could be me doing something dumb in C and Python, and accidentaly not having done it in Go. Please let me know if that's the case.
+The Go version is many times faster than the C and Python version. It is the same speed as memcached. I'm not sure why. I suspect it is something to do with Go's 'pollServer' in net/fd.go, which might be filling buffers in the background. Or it could be me doing something dumb in C and Python, and accidentaly not having done it in Go. Please let me know if that's the case.
 
 ## Profiling
 
@@ -70,7 +71,13 @@ To make profiling easier, each version accepts a '--single' command line paramet
 
 #### Python
 
+Start it in single mode, under the profiler:
+
     python -m cProfile -o stats memg.py --single
+
+Run test.py in a different window.
+View the output with pstats:
+
     $ python
     > import pstats
     > p = pstats.Stats("stats")
@@ -80,20 +87,30 @@ To make profiling easier, each version accepts a '--single' command line paramet
 
 http://blog.golang.org/2011/06/profiling-go-programs.html
 
-1. Uncomment the labelled lines in the source.
+Uncomment the labelled lines in the source.
 
-2. We're using 'gorun', but the profilier needs a real executable. First delete the first line (the #!) from memg.go, then compile and link it:
+We're using 'gorun', but the profilier needs a real executable. Delete the first line (the #!) from memg.go, then compile and link it:
  - On 32bit: 8g memg.go ; 8l -o memg-go memg.8
  - On 64bit: 6g memg.go ; 6l -o memg-go memg.6
 
-3. Run it with '--single' so that it exits after the test connection closes: ./memg.go --single.
-Then run test.py ; because this version is so fast and this profiler samples at a fixed rate, you'll probably need to change test.py to to 10000 iterations.
+Run it with '--single' so that it exits after the test connection closes:
 
-4. Finally, run the goprof tool on your output:
+    ./memg.go --single.
+
+Then run test.py - because this version is so fast and this profiler samples at a fixed rate, you'll probably need to change test.py to to 10000 iterations.
+
+View the output with gopprof:
 
     $ gopprof memg-go memg.prof
     (pprof) top10 --cum
 
 #### C
 
-TODO: How do we profile the C version?
+Start it in single mode under valgrind's callgrind
+
+    valgrind --tool=callgrind ./memg --single
+
+Run test.py in a different window.
+View the output with kcachegrind:
+
+    kcachegrind callgrind.out.<num>
