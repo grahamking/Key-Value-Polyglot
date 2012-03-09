@@ -12,7 +12,7 @@
 #include <search.h>
 #include <pthread.h>
 
-#define READ_SIZE 1024
+#define BUFFER_SIZE 25
 
 // Arguments to our thread
 typedef struct {
@@ -20,9 +20,9 @@ typedef struct {
     struct hsearch_data *htab;
 } thdata;
 
-/*
+/****
  * Buffered IO on socket
- */
+ ****/
 
 struct Buf {
     int conn;
@@ -34,57 +34,122 @@ struct Buf {
 struct Buf *new_buffer(int conn) {
     struct Buf *buf = malloc(sizeof(struct Buf));
     buf->conn = conn;
-    buf->store = malloc(READ_SIZE + 1); // +1 for the \0
+    buf->store = malloc(BUFFER_SIZE);
+    buf->start = 0;
+    buf->end = 0;
     return buf;
 }
 
-void buf_fill(struct Buf *buf) {
-    memset(buf->store, '\0', READ_SIZE + 1);
-    recv(buf->conn, buf->store, READ_SIZE, 0);
+void buf_debug(struct Buf *buf);
 
-    //printf("* Buffer is now: '%s' (%d)\n", buf->store, strlen(buf->store));
+// Buffer len: Number of characters in buffer
+int buf_len(struct Buf *buf) {
+    if (buf->end >= buf->start) {
+        return buf->end - buf->start;
+    } else {
+        return BUFFER_SIZE - buf->start + buf->end;
+    }
+}
+
+// Space to the end of the buffer
+int buf_contiguous_space(struct Buf *buf) {
+    if (buf->end >= buf->start) {
+        return BUFFER_SIZE - buf->end;
+    } else {
+        return buf->start - buf->end;
+    }
+}
+
+void buf_fill(struct Buf *buf) {
+
+    printf("BUF_FILL\n");
+
+    int fetch_size = buf_contiguous_space(buf);
+    if (fetch_size == 0) {
+        printf("Error: Buffer is full!\n");
+        return;
+    }
+
+    //memset(buf->store, '\0', READ_SIZE + 1);
+    int num_fetched = recv(
+            buf->conn,
+            buf->store + buf->end,
+            fetch_size,
+            0);
+
+    buf->end += num_fetched;
+    buf->end %= BUFFER_SIZE;
+
+    buf_debug(buf);
+
+    if (num_fetched == fetch_size) {
+        // OS gave us all the bytes we asked for, ask for more
+        buf_fill(buf);
+    }
 }
 
 /* Fetch until \n */
 char *buf_line(struct Buf *buf) {
 
+    printf("BUF_LINE\n");
+
     size_t str_end;
     char *line;
 
-    if (strlen(buf->store) == 0) {
+    if (buf->start == buf->end) {
         buf_fill(buf);
     }
 
-    str_end = strcspn(buf->store, "\n");
-    line = strndup(buf->store, str_end - 1);    // -1 because of \r
+    str_end = strcspn(buf->store + buf->start, "\n");
+    line = strndup(buf->store + buf->start, str_end - 1);  // -1 because of \r
 
-    memmove(buf->store, buf->store + str_end + 1, READ_SIZE - str_end);
+    //memmove(buf->store, buf->store + str_end + 1, BUFFER_SIZE - str_end);
 
-    //printf("buf_line Found line: %s (%d)\n", line, strlen(line));
-    //printf("buf_line Remain: %s (%d)\n", buf->store, strlen(buf->store));
+    printf("buf_line Found line: %s (%d)\n", line, strlen(line));
+
+    buf->start += str_end + 1;  // +1 because of \n
+
+    buf_debug(buf);
+
     return line;
 }
 
 /* Fetch exactly 'num' bytes */
 char *buf_bytes(struct Buf *buf, int num) {
 
+    printf("BUF_BYTES\n");
+
     char *line;
 
-    if (strlen(buf->store) == 0) {
+    if (buf->start == buf->end) {
         buf_fill(buf);
     }
 
-    line = strndup(buf->store, num);
-    memmove(buf->store, buf->store + num + 2, READ_SIZE - num - 1);
+    line = strndup(buf->store + buf->start, num);
+    //memmove(buf->store, buf->store + num + 2, BUFFER_SIZE - num - 1);
 
-    //printf("buf_bytes Found line: %s (%d)\n", line, strlen(line));
+    printf("buf_bytes Found line: %s (%d)\n", line, strlen(line));
     //printf("buf_bytes Remain: %s (%d)\n", buf->store, strlen(buf->store));
+
+    buf->start += num + 2; // +2 for \r\n
+    buf_debug(buf);
+
     return line;
 }
 
-/*
+/* Display debug info */
+void buf_debug(struct Buf *buf) {
+
+    printf("* Buffer is now: '%s'\n", buf->store);
+    printf("* Start / End: %d / %d\n", buf->start, buf->end);
+    printf("* Len: %d\n", buf_len(buf));
+    printf("* Contiguous: %d\n", buf_contiguous_space(buf));
+}
+
+/****
  * Connection handling. Implements 'get' and 'set'.
- */
+ ****/
+
 void *handle_conn(void *void_param) {//int conn, struct hsearch_data *htab) {
 
     thdata *param = (thdata *)void_param;
@@ -161,9 +226,10 @@ int is_single(int argc, char *argv[]) {
     return 0;
 }
 
-/*
+/****
  * MAIN
- */
+ ****/
+
 int main(int argc, char *argv[]) {
 
     int sock_fd;
@@ -203,7 +269,7 @@ int main(int argc, char *argv[]) {
     addr->sin_addr.s_addr = INADDR_ANY;
     err = bind(sock_fd, (struct sockaddr *)addr, sizeof(struct sockaddr));
     if (err == -1) {
-        printf("bind error: %d\n", errno);
+        printf("Bind error on port 11211: %d. Maybe you have memcached running?\n", errno);
     }
 
     err = listen(sock_fd, 1);

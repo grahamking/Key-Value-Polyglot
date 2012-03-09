@@ -14,9 +14,9 @@ mc['br'] = 'one\r\ntwo'
 assert(mc['br'] == 'one\r\ntwo')
 
 # set
-for i in range(500):
+for i in range(10):
     mc[str(i)] = i
 # get
-for i in range(500):
+for i in range(10):
     val = mc[str(i)]
     assert(int(val) == i)
