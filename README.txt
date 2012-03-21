@@ -29,12 +29,19 @@ $ python -m timeit "import benchmarklib;benchmarklib.main(10)"
 
 (wow)
 
+The C version has the same problems as the original Python version.
+
+$ ./memg &
+$ python -m timeit -n 1 -r 1 "import benchmarklib;benchmarklib.main(1)"
+1 loops, best of 1: 20.1 sec per loop
+
 The results are summarized in the table below.
 
 Requests/second
 ---------------
                                        1 client    10 clients
                                         Req/sec     Req/sec
+C                                         50
 threaded, using socket.sendall            50
 threaded, using sockfile.write/flush     7 k          3 k
 gevent                                   17 k         22 k
