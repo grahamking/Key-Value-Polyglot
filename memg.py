@@ -24,7 +24,12 @@ def main():
 
 def handle_con(conn):
 
-    sockfile = conn.makefile()
+    try:
+        # Disable universal new lines for python 2 compatibility
+        sockfile = conn.makefile(newline="")
+    except TypeError:
+        # python 2
+        sockfile = conn.makefile()
 
     while True:
 
@@ -40,11 +45,11 @@ def handle_con(conn):
 
             try:
                 val = CACHE[key]
-                conn.sendall("VALUE %s 0 %d\r\n" % (key, len(val)))
-                conn.sendall(val + "\r\n")
+                output(conn, "VALUE %s 0 %d\r\n" % (key, len(val)))
+                output(conn, val + "\r\n")
             except KeyError:
                 pass
-            conn.sendall("END\r\n")
+            output(conn, "END\r\n")
 
         elif cmd == "set":
             key = parts[1]
@@ -54,7 +59,12 @@ def handle_con(conn):
             val = sockfile.read(length + 2)[:length]
             CACHE[key] = val
 
-            conn.sendall("STORED\r\n")
+            output(conn, "STORED\r\n")
+
+
+def output(conn, string):
+    """Actually write to socket"""
+    conn.sendall(string.encode("utf8"))
 
 
 if __name__ == "__main__":
