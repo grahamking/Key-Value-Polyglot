@@ -43,7 +43,17 @@ Requests/second
                                         Req/sec     Req/sec
 C                                         50
 threaded, using socket.sendall            50
-threaded, using sockfile.write/flush     7 k          3 k
-gevent                                   17 k         22 k
-diesel                                   11 k         14 k
-memcached                                10 k        100 k
+threaded, using sockfile.write/flush       7 k         3 k
+memg.go                                    9 k        11 k
+gevent                                    17 k        22 k
+diesel                                    11 k        14 k
+memcached                                 10 k       100 k
+
+
+Thoughts
+--------
+
+* The original C and Python implementations are simply flawed
+* Python's async frameworks outperforms go. This is (to me) surprising.
+* The threaded Python program does not scale.
+* memcached is amazing
