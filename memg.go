@@ -8,10 +8,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	//"runtime/pprof"   // Uncomment to profile
 )
 
-var CACHE map[string]string
+var (
+	mu    sync.RWMutex
+	CACHE map[string]string
+)
 
 func main() {
 
@@ -87,7 +91,9 @@ func handleConn(conn net.Conn) {
 
 		case "get":
 			key := parts[1]
+			mu.RLock()
 			val, ok := CACHE[key]
+			mu.RUnlock()
 			if ok {
 				length := strconv.Itoa(len(val))
 				conn.Write([]uint8("VALUE " + key + " 0 " + length + "\r\n"))
@@ -103,7 +109,9 @@ func handleConn(conn net.Conn) {
 			// Really we should read exactly 'length' bytes + \r\n
 			val := make([]byte, length)
 			reader.Read(val)
+			mu.Lock()
 			CACHE[key] = string(val)
+			mu.Unlock()
 			conn.Write([]uint8("STORED\r\n"))
 		}
 	}
