@@ -2,26 +2,28 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 )
 
-var CACHE map[string]string
+var (
+	CACHE      = map[string]string{}
+	singleFlag = flag.Bool("-single", false, "Start in single mode")
+)
 
 func main() {
+	flag.Parse()
 
 	listener, err := net.Listen("tcp", "127.0.0.1:11211")
 	if err != nil {
 		panic("Error listening on 11211: " + err.Error())
 	}
 
-	CACHE = make(map[string]string)
-
-	if isSingle() {
+	if *singleFlag {
 		netconn, err := listener.Accept()
 		if err != nil {
 			panic("Accept error: " + err.Error())
@@ -42,20 +44,11 @@ func main() {
 
 }
 
-func isSingle() bool {
-	for _, arg := range os.Args {
-		if arg == "--single" {
-			return true
-		}
-	}
-	return false
-}
-
 /*
  * Networking
  */
 func handleConn(conn net.Conn) {
-
+	defer conn.Close()
 	reader := bufio.NewReader(conn)
 	for {
 
