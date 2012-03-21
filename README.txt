@@ -23,7 +23,7 @@ Requests/second
 ---------------
                                        1 client    10 clients
                                         Req/sec     Req/sec
-threaded, using sockfile.write/flush     7 k          3 k
 threaded, using socket.sendall            50
+threaded, using sockfile.write/flush     7 k          3 k
 gevent                                   17 k         22 k
 diesel                                   11 k         14 k
