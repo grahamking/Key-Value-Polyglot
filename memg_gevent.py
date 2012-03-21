@@ -1,34 +1,10 @@
 #!/usr/bin/env python
-import socket
-import threading
-import sys
+from gevent.server import StreamServer
 
 CACHE = {}
 
-
-def main():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(("127.0.0.1", 11211))
-    sock.listen(1)
-
-    if '--single' in sys.argv:
-        conn, _ = sock.accept()
-        handle_con(conn)
-    else:
-        while 1:
-            conn, _ = sock.accept()
-            thread = threading.Thread(target=handle_con, args=(conn,))
-            thread.start()
-
-
-def handle_con(conn):
-    try:
-        # Disable universal new lines for python 2 compatibility
-        sockfile = conn.makefile(newline="")
-    except TypeError:
-        # python 2
-        sockfile = conn.makefile()
+def handle_con(conn, address):
+    sockfile = conn.makefile()
 
     while True:
         line = sockfile.readline()
@@ -49,6 +25,7 @@ def handle_con(conn):
                 pass
             sockfile.write("END\r\n")
             sockfile.flush()
+
         elif cmd == "set":
             key = parts[1]
             length = int(parts[4])
@@ -58,5 +35,7 @@ def handle_con(conn):
             sockfile.write("STORED\r\n")
             sockfile.flush()
 
+
 if __name__ == "__main__":
-    main()
+    server = StreamServer(("127.0.0.1", 11211), handle_con)
+    server.serve_forever()
