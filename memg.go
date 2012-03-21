@@ -8,19 +8,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	//"runtime/pprof"   // Uncomment to profile
 )
 
 var CACHE map[string]string
 
 func main() {
-
-	// Uncomment these three lines to profile
-	/*
-	   handle, _ := os.Create("memg.prof")
-	   pprof.StartCPUProfile(handle)
-	   defer pprof.StopCPUProfile()
-	*/
 
 	listener, err := net.Listen("tcp", "127.0.0.1:11211")
 	if err != nil {
