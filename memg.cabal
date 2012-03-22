@@ -48,7 +48,7 @@ Executable memg
   Main-is: memg.hs
   
   -- Packages needed in order to build this package.
-  Build-depends: base, attoparsec-enumerator >= 0.3, enumerator >= 0.4.18, hashtables >= 1.0.1.2, bytestring >= 0.9.2.0, attoparsec >= 0.10.1.1, network >= 2.3.0.8
+  Build-depends: base, attoparsec-enumerator >= 0.3, enumerator >= 0.4.18, hashtables >= 1.0.1.2, attoparsec >= 0.10.1.1, bytestring, network
   
   -- Modules not exported by this package.
   -- Other-modules:       
