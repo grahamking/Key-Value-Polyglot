@@ -2,7 +2,6 @@
 var net = require('net');
 
 /* Are we running in one-shot mode? */
-var oneshot = (process.argv[2] === '--single') ? true : false;
 
 /* Create an async network wrapper */
 var server = net.createServer(function(sock) {
@@ -11,6 +10,7 @@ var server = net.createServer(function(sock) {
 
     /* Create the cache object */
     var CACHE = {};
+    var SINGLE = (process.argv[2] === '--single') ? true : false;
     
     /* Handle the connection received on our network socket */
     sock.on('data', function (chunk) {
@@ -52,7 +52,7 @@ var server = net.createServer(function(sock) {
 
     });
 
-    if (global.oneshot) process.exit(1);
+    if (SINGLE) process.exit(1);
 
 });
 
