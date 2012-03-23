@@ -1,10 +1,18 @@
-/* Create the cache object */
-var CACHE = {};
 
-var handle_conn = function (sock) {
+var net = require('net');
+
+/* Are we running in one-shot mode? */
+var oneshot = (process.argv[2] === '--single') ? true : false;
+
+/* Create an async network wrapper */
+var server = net.createServer(function(sock) {
 
     "use strict";
 
+    /* Create the cache object */
+    var CACHE = {};
+    
+    /* Handle the connection received on our network socket */
     sock.on('data', function (chunk) {
 
         /* Upon receiving the socket connection, extract the data */
@@ -34,6 +42,7 @@ var handle_conn = function (sock) {
                     msg.push("STORED\r\n");
                 };
                 break;
+
         };
 
         sock.write(msg.join(""));
@@ -42,20 +51,6 @@ var handle_conn = function (sock) {
 
     if (global.oneshot) process.exit(1);
 
-};
-
-var net = require('net');
-
-/* Are we running in one-shot mode? */
-var oneshot = (process.argv[2] === '--single') ? true : false;
-
-/* Create an async network wrapper */
-var server = net.createServer(function(sock) {
-    
-    /* Handle the connection received on our network socket */
-    handle_conn(sock);
-
 });
 
 server.listen(11211);
-
