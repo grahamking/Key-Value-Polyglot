@@ -1,7 +1,4 @@
-
 var net = require('net');
-
-/* Are we running in one-shot mode? */
 
 /* Create an async network wrapper */
 var server = net.createServer(function(sock) {
