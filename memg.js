@@ -23,6 +23,7 @@ var server = net.createServer(function(sock) {
         var cmd = tmp[0], key = tmp[1], val;
         var msg = [];
 
+        /* Take action according to the command */
         switch (cmd) {
         
             case "get":
@@ -45,6 +46,7 @@ var server = net.createServer(function(sock) {
 
         };
 
+        /* Write out the response */
         sock.write(msg.join(""));
 
     });
