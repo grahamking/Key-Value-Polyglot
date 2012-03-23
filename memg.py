@@ -21,20 +21,25 @@ def main():
             thread = threading.Thread(target=handle_con, args=(conn,))
             thread.start()
 
+    sock.shutdown(socket.SHUT_RDWR)
+    sock.close()
+
 
 def handle_con(conn):
 
     try:
+        # python 3
         # Disable universal new lines for python 2 compatibility
-        sockfile = conn.makefile(newline="")
+        sockfile = conn.makefile(newline="", mode="rw")
     except TypeError:
         # python 2
-        sockfile = conn.makefile()
+        sockfile = conn.makefile(mode="rw")
 
     while True:
 
         line = sockfile.readline()
         if line == "":
+            conn.close()
             break
 
         parts = line.split()
@@ -45,11 +50,11 @@ def handle_con(conn):
 
             try:
                 val = CACHE[key]
-                output(conn, "VALUE %s 0 %d\r\n" % (key, len(val)))
-                output(conn, val + "\r\n")
+                output(sockfile, "VALUE %s 0 %d\r\n" % (key, len(val)))
+                output(sockfile, val + "\r\n")
             except KeyError:
                 pass
-            output(conn, "END\r\n")
+            output(sockfile, "END\r\n")
 
         elif cmd == "set":
             key = parts[1]
@@ -59,12 +64,14 @@ def handle_con(conn):
             val = sockfile.read(length + 2)[:length]
             CACHE[key] = val
 
-            output(conn, "STORED\r\n")
+            output(sockfile, "STORED\r\n")
+
+        sockfile.flush()
 
 
-def output(conn, string):
+def output(sockfile, string):
     """Actually write to socket"""
-    conn.sendall(string.encode("utf8"))
+    sockfile.write(string)
 
 
 if __name__ == "__main__":

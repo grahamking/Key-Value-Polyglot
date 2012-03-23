@@ -117,14 +117,15 @@ void *handle_conn(void *void_param) {//int conn, struct hsearch_data *htab) {
 
                 val = (char *) result->data;
 
-                msg = malloc(strlen(key) + 13);
-                sprintf(msg, "VALUE %s 0 %d\r\n", key, strlen(val));
+                msg = malloc(strlen(key) + strlen(val) + 20);
+                sprintf(msg, "VALUE %s 0 %d\r\n%s\r\nEND\r\n",
+                        key, strlen(val), val);
                 send(conn, msg, strlen(msg), 0);
 
-                send(conn, val, strlen(val), 0);
-                send(conn, "\r\n", 2, 0);
+            } else {
+
+                send(conn, "END\r\n", 5, 0);
             }
-            send(conn, "END\r\n", 5, 0);
 
         } else if (strcmp(cmd, "set") == 0) {
             key = strtok(NULL, " ");
