@@ -11,20 +11,19 @@ var handle_conn = function (sock) {
         var data = chunk.toString();
 
         /* Start splitting the command string */
-        var parts = data.split('\r\n');
-        var tmp = parts[0].split(' ');
+        var parts = data.split('\r\n'), tmp = parts[0].split(' ');
         var cmd = tmp[0], key = tmp[1], val;
+        var msg = [];
 
         switch (cmd) {
         
             case "get":
                 val = CACHE[key];
                 if (val) {
-                    var msg = "VALUE " + key + " 0 " + val.length + "\r\n";
-                    msg += val + "\r\n";
-                    sock.write(msg);
+                    msg.push("VALUE ", key, " 0 ", val.length, "\r\n")
+                    msg.push(val, "\r\n")
                 };
-                sock.write("END\r\n");
+                msg.push("END\r\n");
                 break;
 
             case "set":
@@ -32,14 +31,16 @@ var handle_conn = function (sock) {
                 var length = +tmp[4];
                 if (val) {
                     CACHE[key] = val.slice(0, length);
-                    sock.write("STORED\r\n");
+                    msg.push("STORED\r\n");
                 };
                 break;
         };
 
+        sock.write(msg.join(""));
+
     });
 
-    if (oneshot) process.exit(1);
+    if (global.oneshot) process.exit(1);
 
 };
 
