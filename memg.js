@@ -5,12 +5,10 @@ var handle_conn = function (sock) {
 
     "use strict";
 
-    var data;
-    
     sock.on('data', function(chunk) {
 
         /* Upon receiving the socket connection, extract the data */
-        data = chunk.toString()
+        var data = chunk.toString()
 
         /* Start splitting the command string */
         var parts = data.split('\r\n');
