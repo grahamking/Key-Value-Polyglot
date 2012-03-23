@@ -5,6 +5,9 @@ var handle_data = function (data, sock) {
 
     "use strict";
 
+    /* Process the data, splitting it into parts 
+
+       TODO: improve the splitting part. */
     var parts = data.split(' ');
     var cmd = parts[0], key = parts[1], val;
 
@@ -40,12 +43,15 @@ var handle_conn = function (sock) {
     
     sock.on('data', function(chunk) {
 
+        /* Upon receiving the socket connection, extract the data */
         data = chunk.toString()
 
+        /* If we have something, we will process it */
         if (data) handle_data(data, sock);
 
     });
 
+    /* Wrap up and return the headers */
     sock.on('end', function () {
 
         sock.writeHead(200);
@@ -65,6 +71,7 @@ var oneshot = (process.argv[2] === '--single') ? true : false;
 /* Create an async network wrapper */
 var server = net.createServer(function(sock) {
     
+    /* Handle the connection received on our network socket */
     handle_conn(sock);
 
 });
