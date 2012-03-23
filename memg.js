@@ -36,10 +36,10 @@ var server = net.createServer(function(sock) {
                 break;
 
             case "set":
-                val = parts[1];
+                val = parts.slice(1, -1);
                 var length = +tmp[4];
                 if (val) {
-                    CACHE[key] = val.slice(0, length);
+                    CACHE[key] = val.join("\r\n").slice(0, length);
                     msg.push("STORED\r\n");
                 };
                 break;
