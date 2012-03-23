@@ -23,12 +23,12 @@ var handle_conn = function (sock) {
                     var msg = "VALUE " + key + " 0 " + val.length + "\r\n";
                     msg += val + "\r\n";
                     sock.write(msg);
-                }
+                };
                 sock.write("END\r\n");
                 break;
 
             case "set":
-                var val = parts[1];
+                val = parts[1];
                 var length = +tmp[4];
                 if (val) {
                     CACHE[key] = val.slice(0, length);
