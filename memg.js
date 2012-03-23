@@ -5,17 +5,17 @@ var handle_conn = function (sock) {
 
     "use strict";
 
-    sock.on('data', function(chunk) {
+    sock.on('data', function (chunk) {
 
         /* Upon receiving the socket connection, extract the data */
-        var data = chunk.toString()
+        var data = chunk.toString();
 
         /* Start splitting the command string */
         var parts = data.split('\r\n');
         var tmp = parts[0].split(' ');
         var cmd = tmp[0], key = tmp[1], val;
 
-        switch(cmd) {
+        switch (cmd) {
         
             case "get":
                 val = CACHE[key];
