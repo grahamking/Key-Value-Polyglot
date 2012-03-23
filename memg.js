@@ -1,12 +1,6 @@
 /* Create the cache object */
 var CACHE = {};
 
-var handle_data = function (data, sock) {
-
-    "use strict";
-
-};
-
 var handle_conn = function (sock) {
 
     "use strict";
