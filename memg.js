@@ -24,25 +24,26 @@ var server = net.createServer(function(sock) {
         var msg = [];
 
         /* Take action according to the command */
-        switch (cmd) {
-        
-            case "get":
-                val = CACHE[key];
-                if (val) {
-                    msg.push("VALUE ", key, " 0 ", val.length, "\r\n")
-                    msg.push(val, "\r\n")
-                };
-                msg.push("END\r\n");
-                break;
+        if (cmd === 'get') {
 
-            case "set":
-                val = parts.slice(1, -1);
-                var length = +tmp[4];
-                if (val) {
-                    CACHE[key] = val.join("\r\n").slice(0, length);
-                    msg.push("STORED\r\n");
-                };
-                break;
+            val = CACHE[key];
+
+            if (val) {
+                msg.push("VALUE ", key, " 0 ", val.length, "\r\n")
+                msg.push(val, "\r\n")
+            };
+
+            msg.push("END\r\n");
+
+        } else if (cmd === 'set') {
+
+            val = parts.slice(1, -1);
+            var length = +tmp[4];
+
+            if (val) {
+                CACHE[key] = val.join("\r\n").slice(0, length);
+                msg.push("STORED\r\n");
+            };
 
         };
 
