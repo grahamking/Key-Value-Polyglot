@@ -18,8 +18,6 @@ var handle_conn = function (sock) {
         /* Upon receiving the socket connection, extract the data */
         data = chunk.toString()
 
-        console.log(data);
-
         /* Start splitting the command string */
         var parts = data.split('\r\n');
         var tmp = parts[0].split(' ');
@@ -46,9 +44,6 @@ var handle_conn = function (sock) {
                 };
                 break;
         };
-
-        console.log(CACHE);
-        debugger;
 
     });
 
