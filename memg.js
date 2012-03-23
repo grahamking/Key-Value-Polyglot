@@ -18,15 +18,16 @@ var handle_conn = function (sock) {
         /* Upon receiving the socket connection, extract the data */
         data = chunk.toString()
 
-        /* If we have something, we will process it
-           TODO: improve the splitting part. */
-        var parts = data.split(' ');
-        var cmd = parts[0], key = parts[1], val;
+        console.log(data);
+
+        /* Start splitting the command string */
+        var parts = data.split('\r\n');
+        var tmp = parts[0].split(' ');
+        var cmd = tmp[0], key = tmp[1], val;
 
         switch(cmd) {
         
             case "get":
-                key = key.split('\r\n')[0];
                 val = CACHE[key];
                 if (val) {
                     var msg = "VALUE " + key + " 0 " + val.length + "\r\n";
@@ -37,14 +38,17 @@ var handle_conn = function (sock) {
                 break;
 
             case "set":
-                var tmp = parts[4].split('\r\n');
-                if (tmp[1]) {
-                    var length = +tmp[0];
-                    CACHE[key] = tmp[1].slice(0, length);
+                var val = parts[1];
+                var length = +tmp[4];
+                if (val) {
+                    CACHE[key] = val.slice(0, length);
                     sock.write("STORED\r\n");
                 };
                 break;
         };
+
+        console.log(CACHE);
+        debugger;
 
     });
 
