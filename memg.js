@@ -1,4 +1,4 @@
-
+/* Create the cache object */
 var CACHE = {};
 
 var handle_data = function (data, sock) {
@@ -32,7 +32,7 @@ var handle_data = function (data, sock) {
     };
 };
 
-var handle_conn = function (sock, oneshot) {
+var handle_conn = function (sock) {
 
     "use strict";
 
@@ -59,11 +59,13 @@ var handle_conn = function (sock, oneshot) {
 
 var net = require('net');
 
-var server = net.createServer(function(sock) {
+/* Are we running in one-shot mode? */
+var oneshot = (process.argv[2] === '--single') ? true : false;
 
-    var oneshot = (process.argv[2] === '--single') ? true : false;
+/* Create an async network wrapper */
+var server = net.createServer(function(sock) {
     
-    handle_conn(sock, oneshot);
+    handle_conn(sock);
 
 });
 
