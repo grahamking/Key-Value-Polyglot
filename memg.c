@@ -12,74 +12,20 @@
 #include <search.h>
 #include <pthread.h>
 
-#define READ_SIZE 1024
-
-// Arguments to our thread
+/* Arguments to our thread */
 typedef struct {
     int conn;
     struct hsearch_data *htab;
 } thdata;
 
-/*
- * Buffered IO on socket
- */
+/* Strip end \r and \n from string */
+void strip(char *str) {
 
-struct Buf {
-    int conn;
-    char *store;
-    int start;
-    int end;
-};
-
-struct Buf *new_buffer(int conn) {
-    struct Buf *buf = malloc(sizeof(struct Buf));
-    buf->conn = conn;
-    buf->store = malloc(READ_SIZE + 1); // +1 for the \0
-    return buf;
-}
-
-void buf_fill(struct Buf *buf) {
-    memset(buf->store, '\0', READ_SIZE + 1);
-    recv(buf->conn, buf->store, READ_SIZE, 0);
-
-    //printf("* Buffer is now: '%s' (%d)\n", buf->store, strlen(buf->store));
-}
-
-/* Fetch until \n */
-char *buf_line(struct Buf *buf) {
-
-    size_t str_end;
-    char *line;
-
-    if (strlen(buf->store) == 0) {
-        buf_fill(buf);
+    int len = strlen(str);
+    while (str[len - 1] == '\r' || str[len - 1] == '\n') {
+        str[len - 1] = 0;
+        len--;
     }
-
-    str_end = strcspn(buf->store, "\n");
-    line = strndup(buf->store, str_end - 1);    // -1 because of \r
-
-    memmove(buf->store, buf->store + str_end + 1, READ_SIZE - str_end);
-
-    //printf("buf_line Found line: %s (%d)\n", line, strlen(line));
-    //printf("buf_line Remain: %s (%d)\n", buf->store, strlen(buf->store));
-    return line;
-}
-
-/* Fetch exactly 'num' bytes */
-char *buf_bytes(struct Buf *buf, int num) {
-
-    char *line;
-
-    if (strlen(buf->store) == 0) {
-        buf_fill(buf);
-    }
-
-    line = strndup(buf->store, num);
-    memmove(buf->store, buf->store + num + 2, READ_SIZE - num - 1);
-
-    //printf("buf_bytes Found line: %s (%d)\n", line, strlen(line));
-    //printf("buf_bytes Remain: %s (%d)\n", buf->store, strlen(buf->store));
-    return line;
 }
 
 /*
@@ -92,24 +38,31 @@ void *handle_conn(void *void_param) {//int conn, struct hsearch_data *htab) {
     struct hsearch_data *htab = param->htab;
 
     char *cmd, *key, *val, *msg, *line;
-    int length;
+    int len, curr_len, space;
     ENTRY entry, *result;
-    struct Buf *buf;
 
-    buf = new_buffer(conn);
+    FILE *f = fdopen(conn, "rw");
+    line = malloc(128);
 
     while (1) {
-        line = buf_line(buf);
+        memset(line, 0, 128);
 
-        if (strlen(line) == 0) {
-            // Client has closed connection
+        fgets(line, 128, f);
+
+        if (strlen(line) == 0) {        // Client has closed connection
+
+            fclose(f);
+            close(conn);
+            free(line);
             break;
         }
 
         cmd = strtok(line, " ");
 
         if (strcmp(cmd, "get") == 0) {
+
             key = strtok(NULL, " ");
+            strip(key);
 
             entry.key = key;
             hsearch_r(entry, FIND, &result, htab);
@@ -121,6 +74,7 @@ void *handle_conn(void *void_param) {//int conn, struct hsearch_data *htab) {
                 sprintf(msg, "VALUE %s 0 %d\r\n%s\r\nEND\r\n",
                         key, strlen(val), val);
                 send(conn, msg, strlen(msg), 0);
+                free(msg);
 
             } else {
 
@@ -128,28 +82,41 @@ void *handle_conn(void *void_param) {//int conn, struct hsearch_data *htab) {
             }
 
         } else if (strcmp(cmd, "set") == 0) {
+
             key = strtok(NULL, " ");
 
-            strtok(NULL, " ");
-            strtok(NULL, " ");
-            //exp = strtok(NULL, " ");
-            //flags = strtok(NULL, " ");
+            strtok(NULL, " ");  // skip exp
+            strtok(NULL, " ");  // skip flags
 
-            length = atoi(strtok(NULL, " "));
-            val = buf_bytes(buf, length);
+            // Length of string to read
+            len = atoi(strtok(NULL, " ")) + 2;  // + 2 for \r\n
+
+            // How much space to allocate. + 1 for \0
+            space = len + 1;
+
+            val = calloc(1, space);
+
+            curr_len = 0;
+            do {
+                fgets(val + curr_len, space - curr_len, f);
+                curr_len = strlen(val);
+            } while (curr_len < len);
+
+            strip(val);
 
             entry.key = strdup(key);
             entry.data = strdup(val);
             hsearch_r(entry, ENTER, &result, htab);
 
             send(conn, "STORED\r\n", 8, 0);
+            free(val);
         }
     }
 
     return NULL;
 }
 
-// Is --single in argv?
+/* Is --single in argv? */
 int is_single(int argc, char *argv[]) {
 
     int i;
@@ -197,12 +164,12 @@ int main(int argc, char *argv[]) {
     }
 
     // bind
-    addr = malloc(sizeof(struct sockaddr_in));
-    memset(addr, 0, sizeof(struct sockaddr_in));    // Fill with zeros
+    addr = calloc(1, sizeof(struct sockaddr_in));
     addr->sin_family = AF_INET;
     addr->sin_port = htons(11211);  // htons: Convert to network byte order
     addr->sin_addr.s_addr = INADDR_ANY;
     err = bind(sock_fd, (struct sockaddr *)addr, sizeof(struct sockaddr));
+    free(addr);
     if (err == -1) {
         printf("bind error: %d\n", errno);
     }
@@ -217,6 +184,7 @@ int main(int argc, char *argv[]) {
         client_addr = malloc(sizeof(struct sockaddr_in));
         client_addr_size = sizeof(struct sockaddr);
         conn = accept(sock_fd, (struct sockaddr *)client_addr, &client_addr_size);
+        free(client_addr);
 
         thread_data->conn = conn;
         thread_data->htab = htab;
@@ -228,7 +196,11 @@ int main(int argc, char *argv[]) {
 
             client_addr = malloc(sizeof(struct sockaddr_in));
             client_addr_size = sizeof(struct sockaddr);
-            conn = accept(sock_fd, (struct sockaddr *)client_addr, &client_addr_size);
+            conn = accept(
+                    sock_fd,
+                    (struct sockaddr *)client_addr,
+                    &client_addr_size);
+            free(client_addr);
 
             thread_data->conn = conn;
             thread_data->htab = htab;
@@ -241,6 +213,9 @@ int main(int argc, char *argv[]) {
     }
 
     close(sock_fd);
+    free(thread_data);
+    hdestroy_r(htab);
+    free(htab);
 
     return 0;
 }
