@@ -1,14 +1,14 @@
 var net = require('net');
 
+/* Create the cache object */
+var CACHE = {};
+var SINGLE = (process.argv[2] === '--single') ? true : false;
+
 /* Create an async network wrapper */
 var server = net.createServer(function(sock) {
 
     "use strict";
 
-    /* Create the cache object */
-    var CACHE = {};
-    var SINGLE = (process.argv[2] === '--single') ? true : false;
-    
     /* Handle the connection received on our network socket */
     sock.on('data', function (chunk) {
 
