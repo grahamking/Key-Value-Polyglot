@@ -14,9 +14,9 @@ mc['br'] = 'one\r\ntwo'
 assert(mc['br'] == 'one\r\ntwo')
 
 # set
-for i in range(500):
+for i in range(10000):
     mc[str(i)] = i          # This hashmap syntax writes to memcached
 # get
-for i in range(500):
+for i in range(10000):
     val = mc[str(i)]        # Hashmap syntax reads from memcached
     assert(int(val) == i)
