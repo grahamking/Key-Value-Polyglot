@@ -19,6 +19,12 @@ CACHE = {}
 def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    # Adding this line makes it a whole world faster. See:
+    # http://en.wikipedia.org/wiki/Nagle's_algorithm and
+    # John Nagle's comment: http://developers.slashdot.org/comments.pl?sid=174457&threshold=1&commentsort=0&mode=thread&cid=14515105
+    #sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
     sock.bind(("127.0.0.1", 11211))
     sock.listen(1)
 
