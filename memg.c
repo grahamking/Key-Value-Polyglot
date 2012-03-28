@@ -1,4 +1,3 @@
-
 #define _GNU_SOURCE
 
 #include <stdio.h>
@@ -29,8 +28,8 @@ void strip(char *str) {
 }
 
 /*
- * Connection handling. Implements 'get' and 'set'.
- */
+* Connection handling. Implements 'get' and 'set'.
+*/
 void *handle_conn(void *void_param) {//int conn, struct hsearch_data *htab) {
 
     thdata *param = (thdata *)void_param;
@@ -42,14 +41,14 @@ void *handle_conn(void *void_param) {//int conn, struct hsearch_data *htab) {
     ENTRY entry, *result;
 
     FILE *f = fdopen(conn, "rw");
-    line = malloc(128);
+    line = (char*)malloc(128);
 
     while (1) {
         memset(line, 0, 128);
 
         fgets(line, 128, f);
 
-        if (strlen(line) == 0) {        // Client has closed connection
+        if (strlen(line) == 0) { // Client has closed connection
 
             fclose(f);
             close(conn);
@@ -70,8 +69,8 @@ void *handle_conn(void *void_param) {//int conn, struct hsearch_data *htab) {
 
                 val = (char *) result->data;
 
-                msg = malloc(strlen(key) + strlen(val) + 20);
-                sprintf(msg, "VALUE %s 0 %d\r\n%s\r\nEND\r\n",
+                msg = (char*)malloc(strlen(key) + strlen(val) + 20);
+                sprintf(msg, "VALUE %s 0 %zd\r\n%s\r\nEND\r\n",
                         key, strlen(val), val);
                 send(conn, msg, strlen(msg), 0);
                 free(msg);
@@ -85,16 +84,16 @@ void *handle_conn(void *void_param) {//int conn, struct hsearch_data *htab) {
 
             key = strtok(NULL, " ");
 
-            strtok(NULL, " ");  // skip exp
-            strtok(NULL, " ");  // skip flags
+            strtok(NULL, " "); // skip exp
+            strtok(NULL, " "); // skip flags
 
             // Length of string to read
-            len = atoi(strtok(NULL, " ")) + 2;  // + 2 for \r\n
+            len = atoi(strtok(NULL, " ")) + 2; // + 2 for \r\n
 
             // How much space to allocate. + 1 for \0
             space = len + 1;
 
-            val = calloc(1, space);
+            val = (char*)calloc(1, space);
 
             curr_len = 0;
             do {
@@ -130,8 +129,8 @@ int is_single(int argc, char *argv[]) {
 }
 
 /*
- * MAIN
- */
+* MAIN
+*/
 int main(int argc, char *argv[]) {
 
     int sock_fd;
@@ -142,10 +141,10 @@ int main(int argc, char *argv[]) {
     socklen_t client_addr_size;
     struct hsearch_data *htab;
     pthread_t thread;
-    thdata *thread_data = malloc(sizeof(thdata));
+    thdata *thread_data = (thdata*)malloc(sizeof(thdata));
 
     // Create hashmap storage
-    htab = calloc(1, sizeof(struct hsearch_data));
+    htab = (struct hsearch_data*)calloc(1, sizeof(struct hsearch_data));
     if (hcreate_r(10000, htab) == -1) {
         printf("Error on hcreate\n");
     }
@@ -164,9 +163,9 @@ int main(int argc, char *argv[]) {
     }
 
     // bind
-    addr = calloc(1, sizeof(struct sockaddr_in));
+    addr = (struct sockaddr_in*)calloc(1, sizeof(struct sockaddr_in));
     addr->sin_family = AF_INET;
-    addr->sin_port = htons(11211);  // htons: Convert to network byte order
+    addr->sin_port = htons(11211); // htons: Convert to network byte order
     addr->sin_addr.s_addr = INADDR_ANY;
     err = bind(sock_fd, (struct sockaddr *)addr, sizeof(struct sockaddr));
     free(addr);
@@ -181,7 +180,7 @@ int main(int argc, char *argv[]) {
 
     if (is_single(argc, argv)) {
 
-        client_addr = malloc(sizeof(struct sockaddr_in));
+        client_addr = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
         client_addr_size = sizeof(struct sockaddr);
         conn = accept(sock_fd, (struct sockaddr *)client_addr, &client_addr_size);
         free(client_addr);
@@ -194,7 +193,7 @@ int main(int argc, char *argv[]) {
     } else {
         while (1) {
 
-            client_addr = malloc(sizeof(struct sockaddr_in));
+            client_addr = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
             client_addr_size = sizeof(struct sockaddr);
             conn = accept(
                     sock_fd,
