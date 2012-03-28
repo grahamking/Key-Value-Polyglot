@@ -11,7 +11,6 @@
 #include <search.h>
 #include <pthread.h>
 
-
 /* Arguments to our thread */
 typedef struct {
     int conn;
@@ -145,7 +144,7 @@ int main(int argc, char *argv[]) {
     thdata *thread_data = (thdata*)malloc(sizeof(thdata));
 
     // Create hashmap storage
-    htab = (hsearch_data*)calloc(1, sizeof(struct hsearch_data));
+    htab = (struct hsearch_data*)calloc(1, sizeof(struct hsearch_data));
     if (hcreate_r(10000, htab) == -1) {
         printf("Error on hcreate\n");
     }
