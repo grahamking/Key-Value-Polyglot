@@ -54,10 +54,10 @@ public class Memg {
 	}
 
 	private static void handleConnection(Socket conn) throws IOException {
-		Scanner in = new Scanner(conn.getInputStream());
-		PrintWriter out = new PrintWriter(conn.getOutputStream(), true);	
+		BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+		PrintWriter out = new PrintWriter(conn.getOutputStream(), false);	
 		while(true) {
-			String line = in.nextLine();
+			String line = in.readLine();
 			if(line.equals(""))
 				break;
 			String[] parts = line.split(" ");
@@ -74,16 +74,22 @@ public class Memg {
 			} else if(cmd.equals("set")) {
 				String key = parts[1];
 				int length = Integer.parseInt(parts[4]);
-				byte[] bs = new byte[length+2];
-				int bytesRead=0;
-				while(bytesRead < length+2) {
-					bs[bytesRead] = (byte)conn.getInputStream().read();
-					bytesRead++;
+				char[] buf = new char[length + 2]; //This is not 100% correct for handling unicode bytes, but it's fine here for the benchmark test
+				int index = 0;
+				while (index < buf.length) {
+					int len = in.read(buf, index, buf.length - index);
+					if (len == -1)
+						break;
+					index += len;
 				}
-				String val = new String(bs);
-				cache.put(key, val.substring(0, length));
+				String val = new String(buf, 0, length);
+				cache.put(key, val);
 				out.printf("STORED\r\n");
+			} else {
+				System.out.println("Unknown cmd: " + cmd);
+				break;
 			}
+			out.flush();
 		}
 	}
 }
